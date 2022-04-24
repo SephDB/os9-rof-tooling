@@ -34,10 +34,10 @@ include(${_project_options_SOURCE_DIR}/Index.cmake)
 
 # Set the project name and language
 project(
-  myproject
+  os9_rof_tooling
   VERSION 0.0.1
   DESCRIPTION ""
-  HOMEPAGE_URL "%%myurl%%"
+  HOMEPAGE_URL "https://github.com/SephDB/os9-rof-tooling"
   LANGUAGES CXX C)
 
 set(GIT_SHA
