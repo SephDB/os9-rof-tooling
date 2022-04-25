@@ -2,7 +2,6 @@
 
 [![ci](https://github.com/SephDB/os9-rof-tooling/actions/workflows/ci.yml/badge.svg)](https://github.com/SephDB/os9-rof-tooling/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/SephDB/os9-rof-tooling/branch/main/graph/badge.svg)](https://codecov.io/gh/SephDB/os9-rof-tooling)
-[![CodeQL](https://github.com/SephDB/os9-rof-tooling/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/SephDB/os9-rof-tooling/actions/workflows/codeql-analysis.yml)
 
 LGTM Has to be set up manually after template is created:
 
