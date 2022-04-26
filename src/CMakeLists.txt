@@ -1,7 +1,6 @@
 find_package(fmt CONFIG)
 find_package(spdlog CONFIG)
 find_package(docopt CONFIG)
-find_package(binary_io REQUIRED CONFIG) #https://github.com/Ryan-rsm-McKenzie/binary_io
 
 # Generic test that uses conan libs
 add_executable(rdump main.cpp)

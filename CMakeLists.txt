@@ -28,6 +28,11 @@ FetchContent_Declare(_project_options
 FetchContent_MakeAvailable(_project_options)
 include(${_project_options_SOURCE_DIR}/Index.cmake)
 
+FetchContent_Declare(binary_io
+    GIT_REPOSITORY https://github.com/Ryan-rsm-McKenzie/binary_io.git
+    GIT_TAG        2.0.4
+)
+
 # uncomment to enable vcpkg:
 # # Setup vcpkg - should be called before defining project()
 # run_vcpkg()
@@ -103,6 +108,8 @@ target_compile_features(project_options INTERFACE cxx_std_${CMAKE_CXX_STANDARD})
 
 # configure files based on CMake configuration options
 add_subdirectory(configured_files)
+
+FetchContent_MakeAvailable(binary_io)
 
 # Adding the src:
 add_subdirectory(src)
