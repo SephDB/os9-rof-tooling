@@ -25,7 +25,7 @@ static constexpr auto USAGE =
 
 void read_string(std::string &s, binary_io::file_istream &in) { 
     s.clear();
-    char c;
+    char c{};
     do {
         in.read(c);
         s.push_back(c);
@@ -54,7 +54,7 @@ struct rof_header
   uint32_t size_remote_initialised;
   uint32_t size_debug;
 
-  rof_header(binary_io::file_istream& in) { 
+  explicit rof_header(binary_io::file_istream& in) { 
       in.read(sync,
       type_language,
       attribute_rev,
