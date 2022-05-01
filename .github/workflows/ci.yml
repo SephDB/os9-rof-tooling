@@ -35,7 +35,7 @@ jobs:
           - windows-2019
         compiler:
           # you can specify the version after `-` like "llvm-13.0.0".
-          - llvm-13.0.0
+          # - llvm-13.0.0 LLVM currently has a bug wrt concepts+requires in binary_io
           - gcc-11
         generator:
           - "Ninja Multi-Config"
@@ -56,8 +56,8 @@ jobs:
           # if you try to use a compiler that does not have gcov set
           - compiler: gcc-11
             gcov_executable: gcov
-          - compiler: llvm-13.0.0
-            gcov_executable: "llvm-cov gcov"
+          #- compiler: llvm-13.0.0
+          #  gcov_executable: "llvm-cov gcov"
 
           # Set up preferred package generators, for given build configurations
           - build_type: Release

@@ -86,6 +86,8 @@ include(${_project_options_SOURCE_DIR}/src/DynamicProjectOptions.cmake)
 # set(<feature_name>_DEVELOPER_DEFAULT <value>) - set default for developer mode
 # set(<feature_name>_USER_DEFAULT <value>) - set default for user mode
 
+set(ENABLE_CLANG_TIDY_DEFAULT OFF) #binary_io doesn't compile with clang(and tooling)
+
 # Initialize project_options variable related to this project
 # This overwrites `project_options` and sets `project_warnings`
 # uncomment the options to enable them:
