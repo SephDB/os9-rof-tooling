@@ -1,13 +1,13 @@
+#include <algorithm>
+#include <bitset>
 #include <functional>
 #include <iostream>
 #include <string>
-#include <algorithm>
 #include <vector>
-#include <bitset>
 
+#include <binary_io/binary_io.hpp>
 #include <docopt/docopt.h>
 #include <spdlog/spdlog.h>
-#include <binary_io/binary_io.hpp>
 
 // This file will be generated automatically when you run the CMake configuration step.
 // It creates a namespace called `os9_rof_tooling`.
@@ -26,18 +26,38 @@ static constexpr auto USAGE =
           --version     Show version.
 )";
 
-std::string read_string(binary_io::file_istream &in) { 
+namespace rof {
+
+namespace detail {
+  std::string read_string(binary_io::file_istream &in)
+  {
     std::string s;
     char c{};
     do {
-        in.read(c);
-        s.push_back(c);
+      in.read(c);
+      s.push_back(c);
     } while (c != '\0');
     s.pop_back();// pop the redundant null terminator
     return s;
-}
+  }
 
-namespace rof {
+  template<typename Entry> std::vector<Entry> read_table(binary_io::file_istream &in)
+  {
+    uint16_t size{};
+    in.read(size);
+    std::vector<Entry> ret;
+    ret.reserve(size);
+    std::generate_n(std::back_inserter(ret), size, [&] { return Entry(in); });
+    return ret;
+  }
+
+  std::vector<std::byte> read_bytes(binary_io::file_istream &in, uint32_t size)
+  {
+    std::vector<std::byte> ret(size);
+    in.read_bytes(ret);
+    return ret;
+  }
+}// namespace detail
 
 struct Header
 {
@@ -83,51 +103,56 @@ struct Header
   }
 };
 
-enum class SymbolType {
-    Data,
-    InitData,
-    Equ,
-    Code
+enum class SymbolType { Data, InitData, Equ, Code };
+
+struct Ref
+{
+  uint8_t info;
+  uint8_t detail;
+  uint32_t offset;
+  explicit Ref(binary_io::file_istream &in) { in.read(info, detail, offset); }
+
+  SymbolType type() const
+  {
+    std::bitset<8> detail_set(this->detail);
+    return (detail_set.test(2) ? (detail_set.test(1) ? SymbolType::Equ : SymbolType::Code)
+                               : (detail_set.test(0) ? SymbolType::InitData : SymbolType::Data));
+  }
 };
 
 struct Symbol
 {
   std::string name;
-  uint8_t type_common;
-  uint8_t type_detail;
-  uint32_t value;
-  explicit Symbol(binary_io::file_istream &in) : name(read_string(in)) {
-      in.read(type_common, type_detail, value);
-  }
-
-
-
-  bool is_common() const { return type_common == 0; }
-  SymbolType type() const {
-    std::bitset<8> detail(type_detail);
-    return (detail.test(2) ? (detail.test(1) ? SymbolType::Equ : SymbolType::Code) : (detail.test(0) ? SymbolType::InitData : SymbolType::Data));
-  }
-
+  Ref reference;
+  explicit Symbol(binary_io::file_istream &in) : name(detail::read_string(in)), reference(in) {}
 };
 
-namespace detail {
-    std::vector<Symbol> read_symbols(binary_io::file_istream& in) {
-      uint16_t size{};
-      in.read(size);
-      std::vector<Symbol> ret;
-      ret.reserve(size);
-      std::generate_n(std::back_inserter(ret), size, [&] { return Symbol(in); });
-      return ret;
-    }
-}
+struct ExternRefGroup
+{
+  std::string name;
+  std::vector<Ref> refs;
+  explicit ExternRefGroup(binary_io::file_istream &in)
+    : name(detail::read_string(in)), refs(detail::read_table<Ref>(in))
+  {}
+};
 
 struct ROF
 {
   Header header;
   std::string name;
   std::vector<Symbol> symbols;
+  std::vector<std::byte> object_code;
+  std::vector<std::byte> init_data;
+  std::vector<std::byte> init_remote;
+  std::vector<ExternRefGroup> extern_refs;
+  std::vector<Ref> local_refs;
 
-  explicit ROF(binary_io::file_istream &in) : header(in), name(read_string(in)), symbols(detail::read_symbols(in)) {}
+  explicit ROF(binary_io::file_istream &in)
+    : header(in), name(detail::read_string(in)), symbols(detail::read_table<Symbol>(in)),
+      object_code(detail::read_bytes(in, header.size_code)), init_data(detail::read_bytes(in, header.size_initialised)),
+      init_remote(detail::read_bytes(in, header.size_remote_initialised)),
+      extern_refs(detail::read_table<ExternRefGroup>(in)), local_refs(detail::read_table<Ref>(in))
+  {}
 };
 
 }// namespace rof
@@ -151,10 +176,12 @@ int main(int argc, const char **argv)
     for (auto &s : current.symbols) {
       fmt::print("{:<20}{:<7}${:08X}\n",
         s.name,
-        s.type() == rof::SymbolType::Data ? "data"
-                                          : (s.type() == rof::SymbolType::InitData ? "idata"
-                                             : (s.type() == rof::SymbolType::Equ ? "equ" : "code")),
-        s.value);
+        s.reference.type() == rof::SymbolType::Data
+          ? "data"
+          : (s.reference.type() == rof::SymbolType::InitData
+               ? "idata"
+               : (s.reference.type() == rof::SymbolType::Equ ? "equ" : "code")),
+        s.reference.offset);
     }
 
   } catch (const std::exception &e) {
