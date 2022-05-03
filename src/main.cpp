@@ -103,7 +103,7 @@ struct Header
   }
 };
 
-enum class SymbolType { Data, InitData, Equ, Code };
+enum class Section { Data = 0, InitData = 1, RemoteData = 2, RemoteInitData = 3, Equ, Code };
 
 struct Ref
 {
@@ -112,11 +112,34 @@ struct Ref
   uint32_t offset;
   explicit Ref(binary_io::file_istream &in) { in.read(info, detail, offset); }
 
-  SymbolType type() const
+  Section target() const
   {
     std::bitset<8> detail_set(this->detail);
-    return (detail_set.test(2) ? (detail_set.test(1) ? SymbolType::Equ : SymbolType::Code)
-                               : (detail_set.test(0) ? SymbolType::InitData : SymbolType::Data));
+    bool data = !detail_set.test(2);
+    if (data) {
+      bool initialised = detail_set.test(0);
+      bool remote = detail_set.test(1);
+      return static_cast<Section>(remote * 2 + initialised);
+    } else {
+      return detail_set.test(1) ? Section::Equ : Section::Code;
+    }
+  }
+};
+
+struct ReplacementInfo
+{
+  Section target;
+  uint32_t offset;
+  enum class Size { Byte, Word, Long } size;
+  bool relative;
+  bool negative;
+  explicit ReplacementInfo(Ref r) : offset(r.offset)
+  {
+    std::bitset<8> detail(r.detail);
+    size = static_cast<Size>(detail.test(4) * 2 + detail.test(3));
+    relative = detail.test(6);
+    negative = detail.test(7);
+    target = (r.info & 0x2) ? Section::RemoteInitData : (detail.test(5) ? Section::Code : Section::InitData);
   }
 };
 
@@ -173,15 +196,9 @@ int main(int argc, const char **argv)
     rof::ROF current(in);
     fmt::print("{}\n", current.name);
     fmt::print("Symbols: {}\n", current.symbols.size());
-    for (auto &s : current.symbols) {
-      fmt::print("{:<20}{:<7}${:08X}\n",
-        s.name,
-        s.reference.type() == rof::SymbolType::Data
-          ? "data"
-          : (s.reference.type() == rof::SymbolType::InitData
-               ? "idata"
-               : (s.reference.type() == rof::SymbolType::Equ ? "equ" : "code")),
-        s.reference.offset);
+    for (auto &r : current.local_refs) {
+      auto target = rof::ReplacementInfo(r);
+      fmt::print("{}@{:08X}->{}\n", target.target, target.offset, r.target());
     }
 
   } catch (const std::exception &e) {
