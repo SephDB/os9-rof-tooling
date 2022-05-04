@@ -61,7 +61,6 @@ namespace detail {
 
 struct Header
 {
-  uint32_t sync{};
   uint16_t type_language{};
   uint16_t attribute_rev{};
   uint16_t asm_valid{};
@@ -82,8 +81,7 @@ struct Header
 
   explicit Header(binary_io::file_istream &in)
   {
-    in.read(sync,
-      type_language,
+    in.read(type_language,
       attribute_rev,
       asm_valid,
       asm_version,
@@ -175,7 +173,9 @@ struct ROF
       object_code(detail::read_bytes(in, header.size_code)), init_data(detail::read_bytes(in, header.size_initialised)),
       init_remote(detail::read_bytes(in, header.size_remote_initialised)),
       extern_refs(detail::read_table<ExternRefGroup>(in)), local_refs(detail::read_table<Ref>(in))
-  {}
+  {
+      in.seek_relative(16); //remove padding bytes
+  }
 };
 
 }// namespace rof
@@ -193,14 +193,27 @@ int main(int argc, const char **argv)
     binary_io::file_istream in(args.at("FILE").asString());
     in.endian(std::endian::big);
 
-    rof::ROF current(in);
-    fmt::print("{}\n", current.name);
-    fmt::print("Symbols: {}\n", current.symbols.size());
-    for (auto &r : current.local_refs) {
-      auto target = rof::ReplacementInfo(r);
-      fmt::print("{}@{:08X}->{}\n", target.target, target.offset, r.target());
+    std::vector<rof::ROF> segments;
+    try {
+      constexpr uint32_t magic = 0xdeadface;
+      uint32_t sync{};
+      in.read(sync);
+      for(; sync == magic; in.read(sync)) {
+        segments.emplace_back(in);
+      }
+      fmt::print("Wrong sync bytes: {:08X}", sync);
+      return -1;
+    } catch (const binary_io::buffer_exhausted &) {
     }
 
+    for (auto& current : segments) {
+        fmt::print("{}\n", current.name);
+        fmt::print("Symbols: {}\n", current.symbols.size());
+        for (auto& r : current.local_refs) {
+            auto target = rof::ReplacementInfo(r);
+            fmt::print("{}@{:08X}->{}\n", target.target, target.offset, r.target());
+        }
+    }
   } catch (const std::exception &e) {
     fmt::print("Unhandled exception in main: {}", e.what());
   }
