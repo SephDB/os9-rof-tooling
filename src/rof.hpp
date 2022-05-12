@@ -56,15 +56,15 @@ struct ReplacementInfo
 {
   Section target;
   uint32_t offset;
-  enum class Size { Byte, Word, Long } size;
+  enum class Size { Byte = 0b1, Word = 0b10, Long = 0b11 } size;
   bool relative;
   bool negative;
   explicit ReplacementInfo(Ref r) : offset(r.offset)
   {
     std::bitset<8> detail(r.detail);
     size = static_cast<Size>(detail.test(4) * 2 + detail.test(3));
-    relative = detail.test(6);
-    negative = detail.test(7);
+    relative = detail.test(7); //For some reason these two bits are swapped vs the documentation?
+    negative = detail.test(6);
     target = (r.info & 0x2) ? Section::RemoteInitData : (detail.test(5) ? Section::Code : Section::InitData);
   }
 };
