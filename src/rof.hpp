@@ -89,6 +89,7 @@ struct ROF
   std::vector<std::byte> object_code;
   std::vector<std::byte> init_data;
   std::vector<std::byte> init_remote;
+  std::vector<std::byte> debug;
   std::vector<ExternRefGroup> extern_refs;
   std::vector<Ref> local_refs;
 };

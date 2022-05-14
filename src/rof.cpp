@@ -75,6 +75,7 @@ namespace {
         read_bytes(in, h.size_code),
         read_bytes(in, h.size_initialised),
         read_bytes(in, h.size_remote_initialised),
+        read_bytes(in, h.size_debug),
         read_table<ExternRefGroup>(),
         read_table<Ref>() };
       in.seek_relative(16);// 16 bytes of padding after each ROF
