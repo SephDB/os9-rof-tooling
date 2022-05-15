@@ -2,9 +2,11 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <ranges>
 #include <string>
 #include <vector>
 
+#include <binary_io/span_stream.hpp>
 #include <docopt/docopt.h>
 #include <fmt/format.h>
 
@@ -44,6 +46,54 @@ char to_char(rof::ReplacementInfo::Size s)
   default:
     return 'l';
   }
+}
+
+std::string resolve_symbol(rof::Section section, uint32_t offset, const rof::ROF &rof)
+{
+  auto viable_symbols = rof.symbols | std::views::filter([&](auto &r) { return r.reference.target() == section; })
+                        | std::views::filter([&](auto &r) { return r.reference.offset <= offset; });
+
+  if (viable_symbols.begin() == viable_symbols.end()) { return fmt::format("${:08X}", offset); }
+
+  const rof::Symbol &closest = std::ranges::max(viable_symbols, {}, [](auto &r) { return r.reference.offset; });
+
+  if (closest.reference.offset == offset) { return closest.name; }
+
+  return fmt::format("{}+${:X}", closest.name, offset - closest.reference.offset);
+}
+
+std::string resolve_local_reference(rof::Ref local, const rof::ROF &rof)
+{
+  const rof::ReplacementInfo replacement(local);
+  const auto section = [&]() -> std::span<const std::byte> {
+    switch (replacement.target) {
+    case rof::Section::Code:
+      return rof.object_code;
+    case rof::Section::InitData:
+      return rof.init_data;
+    case rof::Section::RemoteInitData:
+      return rof.init_remote;
+    }
+    return {};
+  }();
+
+  const auto location = [&]() -> uint32_t {
+    binary_io::span_istream section_read(section);
+    section_read.endian(std::endian::big);
+    section_read.seek_absolute(replacement.offset);
+
+    switch (replacement.size) {
+    case rof::ReplacementInfo::Size::Byte:
+      return std::get<0>(section_read.read<uint8_t>());
+    case rof::ReplacementInfo::Size::Word:
+      return std::get<0>(section_read.read<uint16_t>());
+    case rof::ReplacementInfo::Size::Long:
+      return std::get<0>(section_read.read<uint32_t>());
+    }
+    return 0;
+  }();
+
+  return resolve_symbol(local.target(), location, rof);
 }
 
 static constexpr auto USAGE =
@@ -91,9 +141,9 @@ int main(int argc, const char **argv)
           fmt::print("{}\n", r.name);
           for (auto &details : r.refs) {
             rof::ReplacementInfo replacement(details);
-            fmt::print("{:>9}@${:08X}.{}{}{}\n",
+            fmt::print("{:>9}({}).{}{}{}\n",
               to_string(replacement.target),
-              replacement.offset,
+              resolve_symbol(replacement.target, replacement.offset, current),
               to_char(replacement.size),
               replacement.negative ? " neg" : "",
               replacement.relative ? " rel" : "");
@@ -104,11 +154,12 @@ int main(int argc, const char **argv)
         fmt::print("\nLOCAL:\n");
         for (auto &r : current.local_refs) {
           rof::ReplacementInfo replacement(r);
-          fmt::print("{:>9}@${:08X}.{}->{}{}{}\n",
+          fmt::print("{:>9}({}).{}->{}({}){}{}\n",
             to_string(replacement.target),
-            replacement.offset,
+            resolve_symbol(replacement.target, replacement.offset, current),
             to_char(replacement.size),
             to_string(r.target()),
+            resolve_local_reference(r, current),
             replacement.negative ? " neg" : "",
             replacement.relative ? " rel" : "");
         }
