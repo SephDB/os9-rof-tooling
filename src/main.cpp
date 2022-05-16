@@ -93,6 +93,11 @@ std::string resolve_local_reference(rof::Ref local, const rof::ROF &rof)
     return 0;
   }();
 
+  if (replacement.negative) {
+    const int32_t location_actual = static_cast<int32_t>(location) + replacement.offset - 2;
+    return fmt::format("-*{:+}", location_actual);
+  }
+
   return resolve_symbol(local.target(), location, rof);
 }
 
