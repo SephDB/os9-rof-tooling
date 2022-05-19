@@ -2,7 +2,7 @@ include(FetchContent)
 
 FetchContent_Declare(binary_io
     GIT_REPOSITORY https://github.com/Ryan-rsm-McKenzie/binary_io.git
-    GIT_TAG        2.0.4
+    GIT_TAG        2.0.5
 )
 
 if(NOT binary_io_POPULATED)
