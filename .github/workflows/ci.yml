@@ -30,13 +30,11 @@ jobs:
       # and your own projects needs
       matrix:
         os:
-          - ubuntu-20.04
           #- macos-10.15
           - windows-2019
         compiler:
           # you can specify the version after `-` like "llvm-13.0.0".
           - llvm-13.0.0
-          - gcc-11
         generator:
           - "Ninja Multi-Config"
         build_type:
@@ -50,6 +48,9 @@ jobs:
           # mingw is determined by this author to be too buggy to support
           - os: windows-2019
             compiler: gcc-11
+          #llvm on ubuntu uses libstdc++, which has issues with 
+          - os: ubuntu-20.04
+            compiler: llvm-13.0.0
 
         include:
           # Add appropriate variables for gcov version required. This will intentionally break
@@ -70,7 +71,7 @@ jobs:
             generator: "Unix Makefiles"
             build_type: Debug
             gcov_executable: gcov
-            developer_mode: On
+            developer_mode: Off
 
           - os: windows-2022
             compiler: msvc
@@ -120,9 +121,9 @@ jobs:
           conan: true
           vcpkg: false
           ccache: true
-          clangtidy: ${{ contains(matrix.compiler, 'llvm') }}
+          clangtidy: true
 
-          cppcheck: ${{ contains(matrix.compiler, 'llvm') }}
+          cppcheck: true
 
           gcovr: true
           opencppcoverage: true
