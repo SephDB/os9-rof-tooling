@@ -1,14 +1,11 @@
 #include <catch2/catch.hpp>
+#include <os9rof/disass.h>
 
-unsigned int Factorial(unsigned int number)// NOLINT(misc-no-recursion)
+TEST_CASE("ADDA", "[instructions]")
 {
-  return number <= 1 ? number : Factorial(number - 1) * number;
-}
-
-TEST_CASE("Factorials are computed", "[factorial]")
-{
-  REQUIRE(Factorial(1) == 1);
-  REQUIRE(Factorial(2) == 2);
-  REQUIRE(Factorial(3) == 6);
-  REQUIRE(Factorial(10) == 3628800);
+  const uint16_t base = 0b1101 << 12;
+  const uint16_t a1_w_d2 = base | 01302;
+  const std::array ins = { a1_w_d2 };
+  auto is = binary_io::span_istream(std::as_bytes(std::span{ ins }));
+  REQUIRE(read_instruction(is) == "ADDA.W D2,A1");
 }
