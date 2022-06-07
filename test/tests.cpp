@@ -1,5 +1,14 @@
 #include <catch2/catch.hpp>
 #include <os9rof/disass.h>
+#include <os9rof/detail/ea.h>
+
+TEST_CASE("Regs", "[EA]") {
+	REQUIRE(ea::AllEAs::parse(0,1) == "D1");
+	REQUIRE(ea::AllEAs::parse(1,2) == "A2");
+	REQUIRE(ea::AllEAs::parse(0b10,3) == "(A3)");
+	REQUIRE(ea::AllEAs::parse(0b11,4) == "(A4)+");
+	REQUIRE(ea::AllEAs::parse(0b100,5) == "-(A5)");
+}
 
 TEST_CASE("ADDA", "[instructions]")
 {
